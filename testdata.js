@@ -40,7 +40,7 @@ function generateTree() {
     return root;
 }
 function makelinks() {
-    var ind = 0;
+    /*var ind = 0;
     for (i = 0; i<div(nodenum,10);i++) {
         for (var j = 0; j < 9; j=j+2) {
             for (var k = j + 1; k < 10; k++) {
@@ -63,8 +63,10 @@ function makelinks() {
                 alert(String(i)+ " "+String(j)+" " +String(k)+ " index = "+String(ind));
             ind = ind + 1;
         }
-    }
+    }*/
 }
+
+
 function generate_data() {
     makelinks();
     makenodes();    

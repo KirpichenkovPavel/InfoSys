@@ -12,7 +12,7 @@
     .link {
         fill: none;
         stroke: #9ecae1;
-        stroke-width: 0.1px;
+        stroke-width: 0.2px;
     }
 
 </style>
@@ -20,15 +20,17 @@
 <script src="//d3js.org/d3.v3.min.js"></script>
 <script src=testdata.js></script>
 <script>
-    var root = generateTree();
-    makelinks();
-    var lnk = dat.links;
+    //var root = generateTree();
+    //makelinks();
+    //var lnk = dat.links;
     var width = 1280,
-            height = 1024;
+            height = 1024,
+            root;
 
     var force = d3.layout.force()
             .size([width, height])
             .charge(-100)
+            .distance(50)
             .on("tick", tick);
 
     var drag = force.drag()
@@ -38,9 +40,53 @@
             .attr("width", width)
             .attr("height", height);
 
-    var link,node;
+    var link,node,group;
+    d3.csv("data.csv",function (error,dat) {
+        if (error) throw  error;
+        root = dat;
+        var dict = [];
+        for(var i = 0; i< root.length; i++){
+            var child = root[i].COD;
+            var parent = root[i].SUBCOD;
+            if(parent in dict) {
+                if (child !== "0") {
+                    if (child in dict){
+                        additem();
+                    }
+                    else {
+                        dict[child] = [];additem();
+                    }
+                }
+            }
+            else{
+                dict[parent] = [];
+                if(child!=="0"){
+                    if(child in dict) {additem();
+                    }
+                    else {
+                        dict[child] = [];additem();
+                    }
+                }
+            }
+        }
 
-    update();
+        root[0].children = dict[0];
+        root = root[0];
+
+        function additem() {
+            dict[parent].push({
+                COD: root[i].COD,
+                SUBCOD: root[i].SUBCOD,
+                D_NAME: root[i].D_NAME,
+                FULLNAME: root[i].FULLNAME,
+                ABBR: root[i].ABBR,
+                _children: dict[child]
+            });
+        }
+
+        update();
+    });
+
 
     function update() {
         var nodes = flatten(root),
@@ -70,24 +116,43 @@
         // Update the nodes…
         node = svg
                 .selectAll(".node")
-                .data(nodes, function(d) { return d.index; })
-                .style("fill", color)
-                .style("stroke",strokeColor);
+                .data(nodes, function(d) { return d.index; });
+
 
         // Exit any old nodes.
         node.exit().remove();
 
         // Enter any new nodes.
-        node.enter().append("circle")
+        /*node.enter().append("circle")
                 .attr("class", "node")
                 .attr("cx", function(d) { return d.x; })
                 .attr("cy", function(d) { return d.y; })
-                .attr("r", 3/*function(d) { return Math.sqrt(d.size) / 10 || 4.5; }*/)
+                .attr("r", 3)
                 .style("fill", color)
                 .style("stroke",strokeColor)
                 .on("click",click)
                 .on("dblclick",dblclick)
+                .call(force.drag);*/
+        group = node.enter().append("g")
+                .attr("class", "node")
                 .call(force.drag);
+
+        group.append("circle")
+                .style("fill", color)
+                .style("stroke",strokeColor)
+                //.attr("cx", function(d) { return d.x; })
+                //.attr("cy", function(d) { return d.y; })
+                .attr("r", 3)
+                .style("fill", color)
+                .style("stroke",strokeColor)
+                .on("click",click)
+                .on("dblclick",dblclick);
+
+        group.append("text")
+                .text(function (d) { return d.ABBR; });
+        group.attr("transform",function (d) { return "translate("+d.x+","+d.y+")";});
+
+
 
     }
 
@@ -97,28 +162,32 @@
                 .attr("x2", function(d) { return d.target.x; })
                 .attr("y2", function(d) { return d.target.y; });
 
-        node.attr("cx", function(d) { return d.x; })
-                .attr("cy", function(d) { return d.y; });
+        group.attr("transform",function (d) { return "translate("+d.x+","+d.y+")";});
     }
 
+
+
     function color(d) {
-        //return d._children ? "#3182bd" : d.children ? "#c6dbef" : "#fd8d3c";
-        if(d.level === 0)
+
+        return d._children ? "#3182bd" : d.children ? "#c6dbef" : "#fd8d3c";
+        /*if(d.level === 0)
                 return d._children? "#3182bd": "#c6dbef";
         else if(d.level === 1)
                 return d._children? "#9966cc" : "#c6dbef";
         else if(d.level === 2)
             return d._children? "#25af4c" : "#c6dbef";
-        else return "#fd8d3c";
+        else return "#fd8d3c";*/
     }
     function strokeColor(d) {
-        if(d.level === 0)
+        return d.children? "#3182bd" : "#fd8d3c";
+        /*if(d.level === 0)
                 return "#3182bd";
         else if (d.level === 1)
                 return "#9966cc";
         else if (d.level === 2)
                 return "#25af4c";
-        else return "#fd8d3c";
+        else return "#fd8d3c";*/
+
     }
 
     // Toggle children on click.
@@ -154,6 +223,14 @@
 
     function dragstart(d) {
         d3.select(this).classed("fixed", d.fixed = true);
+    }
+
+    function parsecsv(filename) {
+        var struct;
+        d3.csv(filename,function(error,d){
+            if (error) throw error;
+            else struct = d;});
+        return struct;
     }
 
 </script>
