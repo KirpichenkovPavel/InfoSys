@@ -3,7 +3,7 @@
 <title>Force-Directed Graph</title>
 <style>
 
-    .node {
+    .node :circle{
         cursor: pointer;
         stroke: #3182bd;
         stroke-width: 1.5px;
@@ -12,7 +12,7 @@
     .link {
         fill: none;
         stroke: #9ecae1;
-        stroke-width: 0.2px;
+        stroke-width: 0px;
     }
 
 </style>
@@ -20,16 +20,15 @@
 <script src="//d3js.org/d3.v3.min.js"></script>
 <script src=testdata.js></script>
 <script>
-    //var root = generateTree();
-    //makelinks();
-    //var lnk = dat.links;
-    var width = 1280,
-            height = 1024,
+
+    var width = 1920,
+            height = 1400,
             root;
+    var dx = -10, dy = -18;
 
     var force = d3.layout.force()
             .size([width, height])
-            .charge(-100)
+            .charge(-300)
             .distance(50)
             .on("tick", tick);
 
@@ -39,8 +38,8 @@
     var svg = d3.select("body").append("svg")
             .attr("width", width)
             .attr("height", height);
+    var link,node;
 
-    var link,node,group;
     d3.csv("data.csv",function (error,dat) {
         if (error) throw  error;
         root = dat;
@@ -54,23 +53,32 @@
                         additem();
                     }
                     else {
-                        dict[child] = [];additem();
+                        dict[child] = [];
+                        additem();
                     }
                 }
             }
             else{
                 dict[parent] = [];
                 if(child!=="0"){
-                    if(child in dict) {additem();
+                    if(child in dict) {
+                        additem();
                     }
                     else {
-                        dict[child] = [];additem();
+                        dict[child] = [];
+                        additem();
                     }
                 }
             }
         }
+        dict.forEach(function (d,i) {
+            if(d.length === 0 ) {
+                dict[i] = null;
+            }
 
+        });
         root[0].children = dict[0];
+        root.fixed = true;
         root = root[0];
 
         function additem() {
@@ -97,7 +105,44 @@
                 .nodes(nodes)
                 .links(links)
                 .start();
+        // Update the nodes…
+        node = svg
+                .selectAll(".node")
+                .data(nodes, function(d) { return d.index; });
 
+
+        // Exit any old nodes.
+        node.exit().remove();
+
+        // Enter any new nodes.
+
+        node.enter().append("g")
+                .attr("class", "node")
+                .style("cursor","pointer")
+                .call(force.drag)
+                .on("dblclick",dblclick);
+
+        //.on("mouseover",tip.show)
+        //.on("mouseout",tip.hide);
+
+        node.append("circle")
+                .attr("class","node")
+                .style("fill", color)
+                .style("stroke",strokeColor)
+                .attr("r", 5)
+                .on("click",click);
+
+
+        node.append("text")
+                .text(function (d) { return d.ABBR; })
+                .attr("class","node")
+                .attr("font-size",12+"px")
+                .attr("stroke","black")
+                .attr("dx", dx.toString())
+                .attr("dy",dy.toString())
+                .attr("stroke-width","0.2px");
+
+        node.attr("transform",function (d) { return "translate("+(d.x )+","+(d.y)+")";});
         // Update the links…
         link = svg
                 .selectAll(".link")
@@ -113,63 +158,25 @@
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
                 .attr("y2", function(d) { return d.target.y; });
-        // Update the nodes…
-        node = svg
-                .selectAll(".node")
-                .data(nodes, function(d) { return d.index; });
-
-
-        // Exit any old nodes.
-        node.exit().remove();
-
-        // Enter any new nodes.
-        /*node.enter().append("circle")
-                .attr("class", "node")
-                .attr("cx", function(d) { return d.x; })
-                .attr("cy", function(d) { return d.y; })
-                .attr("r", 3)
-                .style("fill", color)
-                .style("stroke",strokeColor)
-                .on("click",click)
-                .on("dblclick",dblclick)
-                .call(force.drag);*/
-        group = node.enter().append("g")
-                .attr("class", "node")
-                .call(force.drag);
-
-        group.append("circle")
-                .style("fill", color)
-                .style("stroke",strokeColor)
-                //.attr("cx", function(d) { return d.x; })
-                //.attr("cy", function(d) { return d.y; })
-                .attr("r", 3)
-                .style("fill", color)
-                .style("stroke",strokeColor)
-                .on("click",click)
-                .on("dblclick",dblclick);
-
-        group.append("text")
-                .text(function (d) { return d.ABBR; });
-        group.attr("transform",function (d) { return "translate("+d.x+","+d.y+")";});
-
-
 
     }
 
     function tick() {
         link.attr("x1", function(d) { return d.source.x; })
+                .attr("dx","-100")
+                .attr("dy","-10")
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
                 .attr("y2", function(d) { return d.target.y; });
 
-        group.attr("transform",function (d) { return "translate("+d.x+","+d.y+")";});
+        node.attr("transform",function (d) { return "translate("+(d.x)+","+(d.y)+")";});
     }
 
 
 
     function color(d) {
 
-        return d._children ? "#3182bd" : d.children ? "#c6dbef" : "#fd8d3c";
+        return d._children ? "#3182bd" : d.children.length > 0? "#c6dbef" : "#fd8d3c";
         /*if(d.level === 0)
                 return d._children? "#3182bd": "#c6dbef";
         else if(d.level === 1)
@@ -179,7 +186,7 @@
         else return "#fd8d3c";*/
     }
     function strokeColor(d) {
-        return d.children? "#3182bd" : "#fd8d3c";
+        return d.children? "#fd8d3c":"#3182bd";
         /*if(d.level === 0)
                 return "#3182bd";
         else if (d.level === 1)
@@ -193,12 +200,16 @@
     // Toggle children on click.
     function click(d) {
         if (!d3.event.defaultPrevented) {
-            if (d.children) {
+            if (d.children ) {
                 d._children = d.children;
                 d.children = null;
-            } else {
-                d.children = d._children;
-                d._children = null;
+            }
+            else {
+                if(d._children.length > 0){
+                    d.children = d._children;
+                    d._children = null;
+                }
+
             }
             update();
         }
@@ -223,14 +234,6 @@
 
     function dragstart(d) {
         d3.select(this).classed("fixed", d.fixed = true);
-    }
-
-    function parsecsv(filename) {
-        var struct;
-        d3.csv(filename,function(error,d){
-            if (error) throw error;
-            else struct = d;});
-        return struct;
     }
 
 </script>
