@@ -12,7 +12,7 @@
     .link {
         fill: none;
         stroke: #9ecae1;
-        stroke-width: 0px;
+        stroke-width: 0.2px;
     }
 
 </style>
@@ -24,11 +24,15 @@
     var width = 1920,
             height = 1400,
             root;
-    var dx = -10, dy = -18;
+    var dx = -10, dy = -12;
 
     var force = d3.layout.force()
             .size([width, height])
-            .charge(-300)
+            .charge(-600)
+            .chargeDistance(500)
+            .theta(0.5)
+            //.linkStrength(0.6)
+            .friction(0.7)
             .distance(50)
             .on("tick", tick);
 
@@ -75,10 +79,9 @@
             if(d.length === 0 ) {
                 dict[i] = null;
             }
-
         });
         root[0].children = dict[0];
-        root.fixed = true;
+        //root[0].fixed = true;
         root = root[0];
 
         function additem() {
@@ -93,23 +96,29 @@
         }
 
         update();
+        root.fixed = true;
     });
-
 
     function update() {
         var nodes = flatten(root),
                 links = d3.layout.tree().links(nodes);
+        /*links.forEach(function (d) {
+            d.source = nodes[1];
+            d.target = nodes[2];
+        });*/
+        //links.push({source:nodes[1],target:nodes[2]});
 
+        //links.links([root.children[1],root.children[2]]);
         // Restart the force layout.
         force
                 .nodes(nodes)
                 .links(links)
                 .start();
+
         // Update the nodes…
         node = svg
                 .selectAll(".node")
                 .data(nodes, function(d) { return d.index; });
-
 
         // Exit any old nodes.
         node.exit().remove();
@@ -122,13 +131,11 @@
                 .call(force.drag)
                 .on("dblclick",dblclick);
 
-        //.on("mouseover",tip.show)
-        //.on("mouseout",tip.hide);
-
         node.append("circle")
                 .attr("class","node")
                 .style("fill", color)
                 .style("stroke",strokeColor)
+                .style("opacity",0.5)
                 .attr("r", 5)
                 .on("click",click);
 
@@ -146,7 +153,9 @@
         // Update the links…
         link = svg
                 .selectAll(".link")
-                .data(links, function(d) { return d.target.index; });
+                .data(links, function(d) {
+                    return d.target.index;
+                });
 
         // Exit any old links.
         link.exit().remove();
@@ -158,6 +167,16 @@
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
                 .attr("y2", function(d) { return d.target.y; });
+
+        //vis.selectAll("path.linkExtra").data(links)
+         //       .enter().append("path")
+           //     .attr("class", "linkExtra")
+             //   .attr("d", "diagonal");
+
+        for(var i =0; i< 15; i++){
+            force.tick();
+        }
+        //force.stop();
 
     }
 
@@ -172,29 +191,12 @@
         node.attr("transform",function (d) { return "translate("+(d.x)+","+(d.y)+")";});
     }
 
-
-
     function color(d) {
-
-        return d._children ? "#3182bd" : d.children.length > 0? "#c6dbef" : "#fd8d3c";
-        /*if(d.level === 0)
-                return d._children? "#3182bd": "#c6dbef";
-        else if(d.level === 1)
-                return d._children? "#9966cc" : "#c6dbef";
-        else if(d.level === 2)
-            return d._children? "#25af4c" : "#c6dbef";
-        else return "#fd8d3c";*/
+        return d._children && d._children.length>0 ? "#3182bd" : d.children? "#c6dbef" : "#fd8d3c";
     }
-    function strokeColor(d) {
-        return d.children? "#fd8d3c":"#3182bd";
-        /*if(d.level === 0)
-                return "#3182bd";
-        else if (d.level === 1)
-                return "#9966cc";
-        else if (d.level === 2)
-                return "#25af4c";
-        else return "#fd8d3c";*/
 
+    function strokeColor(d) {
+        return d.fixed? "red":"steelblue";
     }
 
     // Toggle children on click.
@@ -209,7 +211,6 @@
                     d.children = d._children;
                     d._children = null;
                 }
-
             }
             update();
         }
@@ -230,10 +231,12 @@
     }
     function dblclick(d) {
         d3.select(this).classed("fixed", d.fixed = false);
+        //update();
     }
 
     function dragstart(d) {
         d3.select(this).classed("fixed", d.fixed = true);
+        //update();
     }
 
 </script>
