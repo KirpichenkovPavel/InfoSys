@@ -12,7 +12,13 @@
     .link {
         fill: none;
         stroke: #9ecae1;
-        stroke-width: 0.2px;
+        stroke-width: 0.5px;
+    }
+
+    .datalink{
+        fill: none;
+        stroke: red;
+        stroke-width: 0.5 px;
     }
 
 </style>
@@ -21,11 +27,15 @@
 <script src=testdata.js></script>
 <script>
 
+    // svg size and tree root variable
     var width = 1920,
             height = 1400,
-            root;
-    var dx = -10, dy = -12;
-
+            root,inflinks;
+    // text offset and node radius
+    var dx = -10, dy = -12, r = 5;
+    // number of skipped simulation cycles before redraw
+    var skippedticks = 30;
+    // force layout for calculating nodes' positions
     var force = d3.layout.force()
             .size([width, height])
             .charge(-600)
@@ -36,21 +46,93 @@
             .distance(50)
             .on("tick", tick);
 
+    // lock nodes position after dragging
     var drag = force.drag()
             .on("dragstart",dragstart);
 
+    // main field selector
     var svg = d3.select("body").append("svg")
             .attr("width", width)
             .attr("height", height);
-    var link,node;
 
+    // selectors for nodes and edges
+    var link,node,dlink;
+    //
+    var coll, datlink = {};
+
+    var dictroot = [];
+
+    //
+    d3.csv("collaboration.csv",function (error,dat2) {
+        if(error) throw error;
+        coll = dat2;
+    });
+    //var dictroot = [];
+
+    // data handler. Parsed file contains a list of all elements with
+    // their attributes and parents.
+    var cntr = 0;
     d3.csv("data.csv",function (error,dat) {
+
         if (error) throw  error;
+
+
         root = dat;
+        root.forEach(function (d) {
+            var cod = d.COD;
+            dictroot[cod] = d;
+        })
+        root = dictroot;
+        root.forEach(function (d) {
+            d.weight = 0;
+        });
+
+        coll.forEach(function (d) {
+            if(d.uid1 !== d.uid2){
+                root[d.uid1].weight+=parseInt(d.weight);
+                root[d.uid2].weight+=parseInt(d.weight);
+                var key = d.uid1.toString()+"_"+d.uid2.toString(),
+                        rkey = d.uid2.toString()+"_"+d.uid1.toString();
+                if(key in datlink){
+                    datlink[key].weight += parseInt(d.weight);
+                }
+                else if (rkey in datlink){
+                    datlink[rkey].weight += parseInt(d.weight);
+                }
+                else {
+                    datlink[key] = {
+                        source: root[d.uid1],
+                        target: root[d.uid2],
+                        weight: parseInt(d.weight)
+                    }
+                }
+            }
+            else{
+                root[d.uid1].weight+=parseInt(d.weight);
+            }
+
+        });
+        /*coll.forEach(function (d) {
+            root.forEach(function (s) {
+                //cntr++;
+                //if (cntr%10000 === 0)console.log(cntr);
+                if(s.COD === d.uid1 || s.COD === d.uid2){
+                    s.weight += parseInt(d.weight);
+                }
+                if(d.uid1 !== d.uid2){
+                    //if
+                    //datlink.append()
+                }
+            });
+
+        });*/
+
         var dict = [];
-        for(var i = 0; i< root.length; i++){
-            var child = root[i].COD;
-            var parent = root[i].SUBCOD;
+        root.forEach(function (el) {
+            var child = el.COD;
+            var parent = el.SUBCOD;
+
+            // create all nodes dict
             if(parent in dict) {
                 if (child !== "0") {
                     if (child in dict){
@@ -74,83 +156,98 @@
                     }
                 }
             }
-        }
-        dict.forEach(function (d,i) {
-            if(d.length === 0 ) {
-                dict[i] = null;
+
+            // child-adding function
+            function additem() {
+                dict[parent].push({
+                    COD: el.COD,
+                    SUBCOD: el.SUBCOD,
+                    D_NAME: el.D_NAME,
+                    FULLNAME: el.FULLNAME,
+                    ABBR: el.ABBR,
+                    _children: dict[child],
+                    weight: el.weight
+                });
             }
         });
+        /*for(var i = 0; i< root.length; i++){
+            var child = root[i].COD;
+            var parent = root[i].SUBCOD;
+
+            // create all nodes dict
+            if(parent in dict) {
+                if (child !== "0") {
+                    if (child in dict){
+                        additem();
+                    }
+                    else {
+                        dict[child] = [];
+                        additem();
+                    }
+                }
+            }
+            else{
+                dict[parent] = [];
+                if(child!=="0"){
+                    if(child in dict) {
+                        additem();
+                    }
+                    else {
+                        dict[child] = [];
+                        additem();
+                    }
+                }
+            }
+        }*/
+
+        // tree accessor
         root[0].children = dict[0];
         //root[0].fixed = true;
         root = root[0];
 
-        function additem() {
-            dict[parent].push({
-                COD: root[i].COD,
-                SUBCOD: root[i].SUBCOD,
-                D_NAME: root[i].D_NAME,
-                FULLNAME: root[i].FULLNAME,
-                ABBR: root[i].ABBR,
-                _children: dict[child]
-            });
-        }
 
+
+
+        // initial redraw
         update();
+
+        // fix main node's location
         root.fixed = true;
     });
 
+    // redrawing function
     function update() {
+
+        // data for nodes and links
         var nodes = flatten(root),
                 links = d3.layout.tree().links(nodes);
-        /*links.forEach(function (d) {
-            d.source = nodes[1];
-            d.target = nodes[2];
-        });*/
-        //links.push({source:nodes[1],target:nodes[2]});
+        var indexedNodes = [];
 
-        //links.links([root.children[1],root.children[2]]);
+        nodes.forEach(function (d) {
+            indexedNodes[d.COD] = d;
+        });
+        // will contain informational links
+        var morelinks = [];
+
+        for(var key in datlink){
+            var indf = parseInt(key.substring(0,key.search(/_/)));
+            var inds = parseInt(key.substring(key.search(/_/)+1,key.length));
+            if(indexedNodes[indf] && indexedNodes[inds]){
+                morelinks.push({
+                    source: indexedNodes[indf],
+                    target: indexedNodes[inds],
+                    weight: key.weight
+                });
+            }
+        }
+
         // Restart the force layout.
         force
-                .nodes(nodes)
                 .links(links)
+                .nodes(nodes)
                 .start();
 
-        // Update the nodes…
-        node = svg
-                .selectAll(".node")
-                .data(nodes, function(d) { return d.index; });
-
-        // Exit any old nodes.
-        node.exit().remove();
-
-        // Enter any new nodes.
-
-        node.enter().append("g")
-                .attr("class", "node")
-                .style("cursor","pointer")
-                .call(force.drag)
-                .on("dblclick",dblclick);
-
-        node.append("circle")
-                .attr("class","node")
-                .style("fill", color)
-                .style("stroke",strokeColor)
-                .style("opacity",0.5)
-                .attr("r", 5)
-                .on("click",click);
-
-
-        node.append("text")
-                .text(function (d) { return d.ABBR; })
-                .attr("class","node")
-                .attr("font-size",12+"px")
-                .attr("stroke","black")
-                .attr("dx", dx.toString())
-                .attr("dy",dy.toString())
-                .attr("stroke-width","0.2px");
-
-        node.attr("transform",function (d) { return "translate("+(d.x )+","+(d.y)+")";});
-        // Update the links…
+        // Update the links.
         link = svg
                 .selectAll(".link")
                 .data(links, function(d) {
@@ -163,38 +260,90 @@
         // Enter any new links.
         link.enter().append("line")
                 .attr("class", "link")
+                /*.attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                 .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                 .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                 .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,r); });*/
                 .attr("x1", function(d) { return d.source.x; })
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
                 .attr("y2", function(d) { return d.target.y; });
 
-        //vis.selectAll("path.linkExtra").data(links)
-         //       .enter().append("path")
-           //     .attr("class", "linkExtra")
-             //   .attr("d", "diagonal");
-
-        for(var i =0; i< 15; i++){
-            force.tick();
-        }
-        //force.stop();
-
-    }
-
-    function tick() {
-        link.attr("x1", function(d) { return d.source.x; })
-                .attr("dx","-100")
-                .attr("dy","-10")
+        // same for data links
+        dlink = svg.selectAll(".datalink")
+                .data(morelinks,function (d) {
+                    return d.target.index;
+                });
+        dlink.exit().remove();
+        dlink.enter().append("line")
+                .attr("class", "datalink")
+                .attr("x1", function(d) { return d.source.x; })
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
                 .attr("y2", function(d) { return d.target.y; });
 
+        // Update the nodes…
+        node = svg
+                .selectAll(".node")
+                .data(nodes, function(d) { return d.index; });
+
+        // Exit any old nodes.
+        node.exit().remove();
+
+        // Enter any new nodes.
+        node.enter().append("g")
+                .attr("class", "node")
+                .style("cursor","pointer")
+                .call(force.drag)
+                .on("dblclick",dblclick);
+
+        node.append("circle")
+                .attr("class","node")
+                .style("fill", color)
+                .style("stroke",strokeColor)
+                //.style("opacity",0.5)
+                .attr("r", r)
+                .on("click",click);
+
+        node.append("text")
+                .text(function (d) { return d.ABBR; })
+                .attr("class","node")
+                .attr("font-size",12+"px")
+                .attr("stroke","black")
+                .attr("dx", dx.toString())
+                .attr("dy",dy.toString())
+                .attr("stroke-width","0.2px");
+
+
+        node.attr("transform",function (d) { return "translate("+(d.x )+","+(d.y)+")";});
+
+        // skip several starting simulation steps
+        for(var i =0; i< skippedticks; i++){
+            force.tick();
+        }
+    }
+
+    // recalculate coordinates during simulation
+    function tick() {
+
+        link.attr("x1", function(d) { return d.source.x; })
+                .attr("y1", function(d) { return d.source.y; })
+                .attr("x2", function(d) { return d.target.x; })
+                .attr("y2", function(d) { return d.target.y; });
+
+        dlink.attr("x1", function(d) { return d.source.x; })
+                .attr("y1", function(d) { return d.source.y; })
+                .attr("x2", function(d) { return d.target.x; })
+                .attr("y2", function(d) { return d.target.y; });
         node.attr("transform",function (d) { return "translate("+(d.x)+","+(d.y)+")";});
     }
 
+    // fill leaf nodes orange, expanded nodes white and closed nodes blue
     function color(d) {
         return d._children && d._children.length>0 ? "#3182bd" : d.children? "#c6dbef" : "#fd8d3c";
     }
 
+    // stroke color doesn't work properly
     function strokeColor(d) {
         return d.fixed? "red":"steelblue";
     }
@@ -229,14 +378,29 @@
         recurse(root);
         return nodes;
     }
+
+    // free the node
     function dblclick(d) {
         d3.select(this).classed("fixed", d.fixed = false);
-        //update();
     }
 
+    // fix the node
     function dragstart(d) {
         d3.select(this).classed("fixed", d.fixed = true);
-        //update();
+    }
+
+    // subtract circle radius
+    function recSx(x1,x2,y1,y2,r) {
+        return x1 + r*(x2-x1)/(y2-y1);
+    }
+    function recSy(x1,x2,y1,y2,r){
+        return y1 + r*(y2-y1)/(x2-x1);
+    }
+    function recDx(x1,x2,y1,y2,r) {
+        return x2 - r*(x2-x1)/(y2-y1);
+    }
+    function recDy(x1,x2,y1,y2,r) {
+        return y2 - r*(x2-x1)/(y2-y1);
     }
 
 </script>
