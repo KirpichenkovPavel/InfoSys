@@ -28,6 +28,7 @@
 <script>
 
     // svg size and tree root variable
+    var minweight = 1;
     var width = 1920,
             height = 1400,
             root,inflinks;
@@ -84,33 +85,32 @@
         })
         root = dictroot;
         root.forEach(function (d) {
-            d.weight = 0;
+            d.wght = 0;
         });
 
         coll.forEach(function (d) {
             if(d.uid1 !== d.uid2){
-                root[d.uid1].weight+=parseInt(d.weight);
-                root[d.uid2].weight+=parseInt(d.weight);
+                root[d.uid1].wght+=parseInt(d.wght);
+                root[d.uid2].wght+=parseInt(d.wght);
                 var key = d.uid1.toString()+"_"+d.uid2.toString(),
                         rkey = d.uid2.toString()+"_"+d.uid1.toString();
                 if(key in datlink){
-                    datlink[key].weight += parseInt(d.weight);
+                    datlink[key].wght += parseInt(d.wght);
                 }
                 else if (rkey in datlink){
-                    datlink[rkey].weight += parseInt(d.weight);
+                    datlink[rkey].wght += parseInt(d.wght);
                 }
                 else {
                     datlink[key] = {
                         source: root[d.uid1],
                         target: root[d.uid2],
-                        weight: parseInt(d.weight)
+                        wght: parseInt(d.wght)
                     }
                 }
             }
             else{
-                root[d.uid1].weight+=parseInt(d.weight);
+                root[d.uid1].wght+=parseInt(d.wght);
             }
-
         });
         /*coll.forEach(function (d) {
             root.forEach(function (s) {
@@ -166,7 +166,7 @@
                     FULLNAME: el.FULLNAME,
                     ABBR: el.ABBR,
                     _children: dict[child],
-                    weight: el.weight
+                    wght: el.wght
                 });
             }
         });
@@ -204,10 +204,8 @@
         root[0].children = dict[0];
         //root[0].fixed = true;
         root = root[0];
-
-
-
-
+        //
+        updweights(root);
         // initial redraw
         update();
 
@@ -219,14 +217,14 @@
     function update() {
 
         // data for nodes and links
-        var nodes = flatten(root),
-                links = d3.layout.tree().links(nodes);
+        var nodes = flatten(root);
+        var links = d3.layout.tree().links(nodes);
         var indexedNodes = [];
 
         nodes.forEach(function (d) {
             indexedNodes[d.COD] = d;
         });
-        // will contain informational links
+        // contains informational links
         var morelinks = [];
 
         for(var key in datlink){
@@ -236,7 +234,7 @@
                 morelinks.push({
                     source: indexedNodes[indf],
                     target: indexedNodes[inds],
-                    weight: key.weight
+                    wght: datlink[key].wght
                 });
             }
         }
@@ -260,14 +258,14 @@
         // Enter any new links.
         link.enter().append("line")
                 .attr("class", "link")
-                /*.attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                 .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                 .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                 .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,r); });*/
-                .attr("x1", function(d) { return d.source.x; })
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,r); });
+                /*.attr("x1", function(d) { return d.source.x; })
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });
+                .attr("y2", function(d) { return d.target.y; });*/
 
         // same for data links
         dlink = svg.selectAll(".datalink")
@@ -277,10 +275,14 @@
         dlink.exit().remove();
         dlink.enter().append("line")
                 .attr("class", "datalink")
-                .attr("x1", function(d) { return d.source.x; })
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,r); });
+                /*.attr("x1", function(d) { return d.source.x; })
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });
+                .attr("y2", function(d) { return d.target.y; });*/
 
         // Update the nodes…
         node = svg
@@ -302,7 +304,10 @@
                 .style("fill", color)
                 .style("stroke",strokeColor)
                 //.style("opacity",0.5)
-                .attr("r", r)
+                .attr("r", function (d) {
+                    if (d.wght > 0) return (Math.log(d.wght)/Math.log(2));
+                    else return 2;
+                })
                 .on("click",click);
 
         node.append("text")
@@ -326,15 +331,25 @@
     // recalculate coordinates during simulation
     function tick() {
 
-        link.attr("x1", function(d) { return d.source.x; })
+        link
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,r); });
+                /*.attr("x1", function(d) { return d.source.x; })
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });
+                .attr("y2", function(d) { return d.target.y; });*/
 
-        dlink.attr("x1", function(d) { return d.source.x; })
+        dlink
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,r); });
+                /*.attr("x1", function(d) { return d.source.x; })
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });
+                .attr("y2", function(d) { return d.target.y; });*/
         node.attr("transform",function (d) { return "translate("+(d.x)+","+(d.y)+")";});
     }
 
@@ -366,13 +381,24 @@
     }
 
     // Returns a list of all nodes under the root.
+    // Also removes all children with weight value
+    // below permitted
     function flatten(root) {
         var nodes = [], i = 0;
 
         function recurse(node) {
-            if (node.children) node.children.forEach(recurse);
-            if (!node.id) node.id = ++i;
-            nodes.push(node);
+            if (node.children){
+                node.children.forEach(function (d) {
+                    recurse(d);
+                });
+                var filtered = node.children.filter(function (el,ind,arr) {
+                    return el.wght >= minweight;
+                });
+                //node.children = filtered;
+            }
+            if (node && !node.id) node.id = ++i;
+            //if(node && node.wght >= minweight)
+                nodes.push(node);
         }
 
         recurse(root);
@@ -391,16 +417,49 @@
 
     // subtract circle radius
     function recSx(x1,x2,y1,y2,r) {
-        return x1 + r*(x2-x1)/(y2-y1);
+        var d = Math.sqrt(Math.pow(x2 - x1,2)+Math.pow(y2 - y1,2));
+        if (d > 2*r)
+            return x1 + r*(x2 - x1)/d;
+        else
+            return (x1 + x2)/2;
     }
     function recSy(x1,x2,y1,y2,r){
-        return y1 + r*(y2-y1)/(x2-x1);
+        var d = Math.sqrt(Math.pow(x2 - x1,2)+Math.pow(y2 - y1,2));
+        if (d > 2*r)
+            return y1 + r*(y2 - y1)/d;
+        else
+                return (y1  + y2)/2;
     }
     function recDx(x1,x2,y1,y2,r) {
-        return x2 - r*(x2-x1)/(y2-y1);
+        var d = Math.sqrt(Math.pow(x2 - x1,2)+Math.pow(y2 - y1,2));
+        if (d > 2*r)
+            return x2 - r*(x2 - x1)/d;
+        else
+                return (x1 + x2)/2;
     }
     function recDy(x1,x2,y1,y2,r) {
-        return y2 - r*(x2-x1)/(y2-y1);
+        var d = Math.sqrt(Math.pow(x2 - x1,2)+Math.pow(y2 - y1,2));
+        if (d > 2*r)
+            return y2 - r*(y2 - y1)/d;
+        else
+                return (y1 + y2)/2;
+    }
+
+    function updweights(root) {
+
+        function rec(node) {
+            //var wght = 0;
+            if(!node.wght) node.wght = 0;
+            if(node.children) node.children.forEach(function(n){
+                rec(n);
+                node.wght += n.wght;
+            });
+            else if(node._children) node._children.forEach(function(n){
+                rec(n);
+                node.wght += n.wght;
+            })
+        }
+        rec(root);
     }
 
 </script>
