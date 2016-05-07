@@ -29,24 +29,31 @@
 
     // svg size and tree root variable
     var minweight = 1;
-    var width = 1920,
-            height = 1400,
+    var width = 1280,
+            height = 1024,
             root,inflinks;
     // text offset and node radius
     var dx = -10, dy = -12, r = 5;
     // number of skipped simulation cycles before redraw
-    var skippedticks = 30;
+    var skippedticks = 50;
     // force layout for calculating nodes' positions
     var force = d3.layout.force()
             .size([width, height])
             .charge(-600)
             .chargeDistance(500)
             .theta(0.5)
+            //.alpha(0.08)
             //.linkStrength(0.6)
             .friction(0.7)
             .distance(50)
             .on("tick", tick);
-
+    //
+    var minAlpha = 0.06;
+    // node radius parameters - linear scaling coefficient and logarithm base
+    var scale = 0.6;
+    var base = 1.5;
+    // node text size
+    var textsize = 12;
     // lock nodes position after dragging
     var drag = force.drag()
             .on("dragstart",dragstart);
@@ -68,7 +75,6 @@
         if(error) throw error;
         coll = dat2;
     });
-    //var dictroot = [];
 
     // data handler. Parsed file contains a list of all elements with
     // their attributes and parents.
@@ -82,7 +88,7 @@
         root.forEach(function (d) {
             var cod = d.COD;
             dictroot[cod] = d;
-        })
+        });
         root = dictroot;
         root.forEach(function (d) {
             d.wght = 0;
@@ -112,20 +118,6 @@
                 root[d.uid1].wght+=parseInt(d.wght);
             }
         });
-        /*coll.forEach(function (d) {
-            root.forEach(function (s) {
-                //cntr++;
-                //if (cntr%10000 === 0)console.log(cntr);
-                if(s.COD === d.uid1 || s.COD === d.uid2){
-                    s.weight += parseInt(d.weight);
-                }
-                if(d.uid1 !== d.uid2){
-                    //if
-                    //datlink.append()
-                }
-            });
-
-        });*/
 
         var dict = [];
         root.forEach(function (el) {
@@ -170,42 +162,15 @@
                 });
             }
         });
-        /*for(var i = 0; i< root.length; i++){
-            var child = root[i].COD;
-            var parent = root[i].SUBCOD;
-
-            // create all nodes dict
-            if(parent in dict) {
-                if (child !== "0") {
-                    if (child in dict){
-                        additem();
-                    }
-                    else {
-                        dict[child] = [];
-                        additem();
-                    }
-                }
-            }
-            else{
-                dict[parent] = [];
-                if(child!=="0"){
-                    if(child in dict) {
-                        additem();
-                    }
-                    else {
-                        dict[child] = [];
-                        additem();
-                    }
-                }
-            }
-        }*/
-
         // tree accessor
         root[0].children = dict[0];
-        //root[0].fixed = true;
         root = root[0];
         //
         updweights(root);
+        //
+        removeEmptyNodes(root);
+
+        
         // initial redraw
         update();
 
@@ -258,14 +223,10 @@
         // Enter any new links.
         link.enter().append("line")
                 .attr("class", "link")
-                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,r); });
-                /*.attr("x1", function(d) { return d.source.x; })
-                .attr("y1", function(d) { return d.source.y; })
-                .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });*/
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); });
 
         // same for data links
         dlink = svg.selectAll(".datalink")
@@ -275,14 +236,11 @@
         dlink.exit().remove();
         dlink.enter().append("line")
                 .attr("class", "datalink")
-                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,r); });
-                /*.attr("x1", function(d) { return d.source.x; })
-                .attr("y1", function(d) { return d.source.y; })
-                .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });*/
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); });
+
 
         // Update the nodes…
         node = svg
@@ -304,16 +262,13 @@
                 .style("fill", color)
                 .style("stroke",strokeColor)
                 //.style("opacity",0.5)
-                .attr("r", function (d) {
-                    if (d.wght > 0) return (Math.log(d.wght)/Math.log(2));
-                    else return 2;
-                })
+                .attr("r", calcR)
                 .on("click",click);
 
         node.append("text")
                 .text(function (d) { return d.ABBR; })
                 .attr("class","node")
-                .attr("font-size",12+"px")
+                .attr("font-size",textsize+"px")
                 .attr("stroke","black")
                 .attr("dx", dx.toString())
                 .attr("dy",dy.toString())
@@ -328,29 +283,29 @@
         }
     }
 
+    function calcR(d) {
+        if (d.wght > 1) return scale*(Math.log(d.wght)/Math.log(base));
+        else return 1;
+    }
+
     // recalculate coordinates during simulation
     function tick() {
 
         link
-                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,r); });
-                /*.attr("x1", function(d) { return d.source.x; })
-                .attr("y1", function(d) { return d.source.y; })
-                .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });*/
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); });
 
         dlink
-                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,r); })
-                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,r); });
-                /*.attr("x1", function(d) { return d.source.x; })
-                .attr("y1", function(d) { return d.source.y; })
-                .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });*/
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); });
+
         node.attr("transform",function (d) { return "translate("+(d.x)+","+(d.y)+")";});
+        if (force.alpha() < minAlpha)
+                force.stop();
     }
 
     // fill leaf nodes orange, expanded nodes white and closed nodes blue
@@ -412,35 +367,37 @@
 
     // fix the node
     function dragstart(d) {
+
         d3.select(this).classed("fixed", d.fixed = true);
+        //update();
     }
 
     // subtract circle radius
-    function recSx(x1,x2,y1,y2,r) {
+    function recSx(x1,x2,y1,y2,r1,r2) {
         var d = Math.sqrt(Math.pow(x2 - x1,2)+Math.pow(y2 - y1,2));
-        if (d > 2*r)
-            return x1 + r*(x2 - x1)/d;
+        if (d > r1+r2)
+            return x1 + r1*(x2 - x1)/d;
         else
             return (x1 + x2)/2;
     }
-    function recSy(x1,x2,y1,y2,r){
+    function recSy(x1,x2,y1,y2,r1,r2){
         var d = Math.sqrt(Math.pow(x2 - x1,2)+Math.pow(y2 - y1,2));
-        if (d > 2*r)
-            return y1 + r*(y2 - y1)/d;
+        if (d > r1 + r2)
+            return y1 + r1*(y2 - y1)/d;
         else
                 return (y1  + y2)/2;
     }
-    function recDx(x1,x2,y1,y2,r) {
+    function recDx(x1,x2,y1,y2,r1,r2) {
         var d = Math.sqrt(Math.pow(x2 - x1,2)+Math.pow(y2 - y1,2));
-        if (d > 2*r)
-            return x2 - r*(x2 - x1)/d;
+        if (d > r1+r2)
+            return x2 - r2*(x2 - x1)/d;
         else
                 return (x1 + x2)/2;
     }
-    function recDy(x1,x2,y1,y2,r) {
+    function recDy(x1,x2,y1,y2,r1,r2) {
         var d = Math.sqrt(Math.pow(x2 - x1,2)+Math.pow(y2 - y1,2));
-        if (d > 2*r)
-            return y2 - r*(y2 - y1)/d;
+        if (d > r1 + r2)
+            return y2 - r2*(y2 - y1)/d;
         else
                 return (y1 + y2)/2;
     }
@@ -462,4 +419,32 @@
         rec(root);
     }
 
+    function removeEmptyNodes(root) {
+
+        function rec(node) {
+            if (node.children && node.children.length > 0){
+                //rec(node);
+                var filtered = node.children.filter(function (el,ind,arr) {
+                    return el.wght > 0;
+                });
+                node.children = filtered;
+                node.children.forEach(rec);
+            }
+            else if (node._children && node._children.length >0){
+                var filtered = node._children.filter(function (el,ind,arr) {
+                    return el.wght > 0;
+                });
+                node._children = filtered;
+                node._children.forEach(rec);
+            }
+        }
+        rec(root);
+    }
+    function updDlinks() {
+        //to do: check links in datlink, if no link for parants exist then add one
+        // then do this for newly created links
+        datlink.forEach(function (l) {
+
+        })
+    }
 </script>
