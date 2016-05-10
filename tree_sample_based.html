@@ -12,13 +12,13 @@
     .link {
         fill: none;
         stroke: #9ecae1;
-        stroke-width: 0.5px;
+        stroke-width: 0.3px;
     }
 
     .datalink{
         fill: none;
         stroke: red;
-        stroke-width: 0.5 px;
+
     }
 
 </style>
@@ -27,20 +27,21 @@
 <script src=testdata.js></script>
 <script>
 
-    // svg size and tree root variable
+    // bottom edge of the node weight
     var minweight = 1;
+    // svg size and tree root variable
     var width = 1280,
             height = 1024,
             root,inflinks;
     // text offset and node radius
-    var dx = -10, dy = -12, r = 5;
+    var dx = -17, dy = -17, r = 5;
     // number of skipped simulation cycles before redraw
     var skippedticks = 50;
     // force layout for calculating nodes' positions
     var force = d3.layout.force()
             .size([width, height])
-            .charge(-600)
-            .chargeDistance(500)
+            .charge(-650)
+            .chargeDistance(200)
             .theta(0.5)
             //.alpha(0.08)
             //.linkStrength(0.6)
@@ -165,12 +166,14 @@
         // tree accessor
         root[0].children = dict[0];
         root = root[0];
-        //
+        //add tree levels
+        addTiers(root);
+        //add chilren nodes' weights to parent's
         updweights(root);
-        //
+        //remove nodes with zero weights
         removeEmptyNodes(root);
-
-        
+        //not ready yet
+        //updDlinks();
         // initial redraw
         update();
 
@@ -239,8 +242,10 @@
                 .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
                 .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
                 .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); });
-
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .style("stroke-width",function (d) {
+                    return 0.1*Math.log(d.wght)/Math.log(1.3);
+                });
 
         // Update the nodes…
         node = svg
@@ -274,7 +279,6 @@
                 .attr("dy",dy.toString())
                 .attr("stroke-width","0.2px");
 
-
         node.attr("transform",function (d) { return "translate("+(d.x )+","+(d.y)+")";});
 
         // skip several starting simulation steps
@@ -296,7 +300,6 @@
                 .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
                 .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
                 .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); });
-
         dlink
                 .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
                 .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
@@ -313,9 +316,10 @@
         return d._children && d._children.length>0 ? "#3182bd" : d.children? "#c6dbef" : "#fd8d3c";
     }
 
-    // stroke color doesn't work properly
+    // stroke color is black for now
     function strokeColor(d) {
-        return d.fixed? "red":"steelblue";
+        //return d.fixed? "red":"steelblue";
+        return "black";
     }
 
     // Toggle children on click.
@@ -355,7 +359,6 @@
             //if(node && node.wght >= minweight)
                 nodes.push(node);
         }
-
         recurse(root);
         return nodes;
     }
@@ -367,7 +370,6 @@
 
     // fix the node
     function dragstart(d) {
-
         d3.select(this).classed("fixed", d.fixed = true);
         //update();
     }
@@ -403,7 +405,6 @@
     }
 
     function updweights(root) {
-
         function rec(node) {
             //var wght = 0;
             if(!node.wght) node.wght = 0;
@@ -420,7 +421,6 @@
     }
 
     function removeEmptyNodes(root) {
-
         function rec(node) {
             if (node.children && node.children.length > 0){
                 //rec(node);
@@ -441,10 +441,46 @@
         rec(root);
     }
     function updDlinks() {
-        //to do: check links in datlink, if no link for parants exist then add one
+        //to do: check links in datlink, if no link for parents exist then add one
         // then do this for newly created links
-        datlink.forEach(function (l) {
+        var addedLinks = {};
+        Object.keys(datlink).forEach(function (d) {
+            var l = datlink[d];
+            var key1 = l.source.SUBCOD;
+            var key2 = l.target.SUBCOD;
+            if(key1 !== key2) {
+                if (key1 + "_" + key2 in datlink) {
+                    datlink[key1 + "_" + key2].wght += l.wght;
+                } else if (key2 + "_" + key1 in datlink) {
+                    datlink[key2 + "_" + key1].wght += l.wght;
+                } else {
+                    var par1 = dictroot[l.source.SUBCOD];
+                    var par2 = dictroot[l.target.SUBCOD];
+                    //if (!(par1 === l.target || par2 === l.source) && (l.source.COD !== 0 && l.target.COD !== 0))
+                      //  addedLinks[key1 + "_" + key2] = {source: par1, target: par2, wght: l.wght}
+                }
+            }
+        });
+        /*Object.keys(addedLinks).forEach(function (d) {
+            datlink[d] = addedLinks[d];
+        })*/
+    }
 
-        })
+    function addTiers(root){
+        root.level = 0;
+        function rec(node) {
+            if(node.children && node.children.length > 0){
+                node.children.forEach(function (d) {
+                    d.level = node.level + 1;
+                    rec(d);
+                });
+            } else if(node._children && node._children.length > 0){
+                node._children.forEach(function (d) {
+                    d.level = node.level + 1;
+                    rec(d);
+                });
+            }
+        }
+        rec(root);
     }
 </script>
