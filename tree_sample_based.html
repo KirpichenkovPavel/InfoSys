@@ -21,6 +21,19 @@
 
     }
 
+    div.tooltip {
+        position: absolute;
+        text-align: center;
+        width: 60px;
+        height: 28px;
+        padding: 2px;
+        font: 12px sans-serif;
+        background: lightsteelblue;
+        border: 0px;
+        border-radius: 8px;
+        pointer-events: none;
+    }
+
 </style>
 <body>
 <script src="//d3js.org/d3.v3.min.js"></script>
@@ -28,7 +41,7 @@
 <script>
 
     // bottom edge of the node weight
-    var minweight = 1;
+    var minweight = 1,minlnkweight = 20;
     // svg size and tree root variable
     var width = 1280,
             height = 1024,
@@ -73,7 +86,7 @@
     var coll, datlink = {};
 
     var dictroot = [];
-
+    var hlnodes = [];
     //
     d3.csv("collaboration.csv",function (error,dat2) {
         if(error) throw error;
@@ -179,7 +192,9 @@
         //
         addPaths(root);
         //not ready yet
-        //updDlinks();
+        var div = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
         // initial redraw
         update();
 
@@ -202,30 +217,14 @@
         var morelinks = [];
         var dictlinks = {};
         // rise every link to the open level, if open parent nodes are different
+        // to do filters
         for(var key in datlink){
             var indf = parseInt(key.substring(0,key.search(/_/)));
             var inds = parseInt(key.substring(key.search(/_/)+1,key.length));
-            /*if(indexedNodes[indf] && indexedNodes[inds]){
-                /*morelinks.push({
-                //    source: indexedNodes[indf],
-                  //  target: indexedNodes[inds],
-                    //wght: datlink[key].wght
-                //});
-                if(indf+"_"+inds in dictlinks){
-                    dictlinks[indf+"_"+inds].wght += datlink[key].wght;
-                } else if(inds + "_" +indf in dictlinks){
-                    dictlinks[inds + "_" +indf].wght += datlink[key].wght;
-                } else{
-                    dictlinks[key] = {
-                        source: indexedNodes[indf],
-                        target: indexedNodes[inds],
-                        wght: datlink[key].wght
-                    }
-                }
-            }else*/// {
                 var x = 0, i, node1, node2;
                 var p1 = dictroot[indf].pathnodes;
                 var p2 = dictroot[inds].pathnodes;
+                //var onscrpar1,onscrpar2;
                     for(i = 0; i< p1.length; i++){
                         node1 = p1[p1.length - 1 - i];
                         if(indexedNodes[node1]) break;
@@ -251,7 +250,9 @@
         }
 
         Object.keys(dictlinks).forEach(function (d) {
-            morelinks.push(dictlinks[d])
+            if(dictlinks[d].wght > minlnkweight){
+                morelinks.push(dictlinks[d]);
+            }
         });
 
         // Restart the force layout.
@@ -301,15 +302,38 @@
                 .selectAll(".node")
                 .data(nodes, function(d) { return d.index; });
 
+        /*node.update()
+                .style("opacity",function (d) {
+                    if(hl.length === 0) return 1;
+                    else if (d3.select(this).classed("highlighted"))
+                        return 1;
+                    else return 0.1;
+        });*/
         // Exit any old nodes.
         node.exit().remove();
-
+        var hl = d3.selectAll(".highlighted");
         // Enter any new nodes.
         node.enter().append("g")
                 .attr("class", "node")
                 .style("cursor","pointer")
                 .call(force.drag)
-                .on("dblclick",dblclick);
+                .on("dblclick",dblclick)
+                .on("click",highlight)
+                .style("opacity",function (d) {
+                    if(hl.length === 0) return 1;
+                    else if (d3.select(this).classed("highlighted"))
+                            return 1;
+                    else return 0.1;
+                });
+                /*.on("mouseover", function (d) {
+                    div
+                            .transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                })
+                .on("mouseout", function (d) {
+                    
+                });*/
 
         node.append("circle")
                 .attr("class","node")
@@ -317,7 +341,7 @@
                 .style("stroke",strokeColor)
                 //.style("opacity",0.5)
                 .attr("r", calcR)
-                .on("click",click);
+                .on("dblclick",expand);
 
         node.append("text")
                 .text(function (d) { return d.ABBR; })
@@ -337,7 +361,7 @@
     }
 
     function calcR(d) {
-        if (d.wght > 1) return scale*(Math.log(d.wght)/Math.log(base));
+        if (d.wght > 1) return scale*(Math.log(d.wght)/Math.log(base)+4);
         else return 1;
     }
 
@@ -372,7 +396,7 @@
     }
 
     // Toggle children on click.
-    function click(d) {
+    function expand(d) {
         if (!d3.event.defaultPrevented) {
             if (d.children ) {
                 d._children = d.children;
@@ -487,40 +511,7 @@
         }
         rec(root);
     }
-    function updDlinks() {
-        //to do: check links in datlink, if no link for parents exist then add one
-        // then do this for newly created links
-        Object.keys(datlink).forEach(function (d) {
-            var lnk = datlink[lnk];
-            var key1 = l.source.SUBCOD;
-            var key2 = l.target.SUBCOD;
-            if(key1!==key2){
 
-            }
-        });
-        //var addedLinks = {};
-        /*Object.keys(datlink).forEach(function (d) {
-            var l = datlink[d];
-            var key1 = l.source.SUBCOD;
-            var key2 = l.target.SUBCOD;
-            if(key1 !== key2) {
-                if (key1 + "_" + key2 in datlink) {
-                    datlink[key1 + "_" + key2].wght += l.wght;
-                } else if (key2 + "_" + key1 in datlink) {
-                    datlink[key2 + "_" + key1].wght += l.wght;
-                } else {
-                    var par1 = dictroot[l.source.SUBCOD];
-                    var par2 = dictroot[l.target.SUBCOD];
-                    if (!(par1 === l.target || par2 === l.source) && (l.source.COD !== 0 && l.target.COD !== 0))
-                        addedLinks[key1 + "_" + key2] = {source: par1, target: par2, wght: l.wght}
-                }
-            }
-        });*/
-
-        /*Object.keys(addedLinks).forEach(function (d) {
-            datlink[d] = addedLinks[d];
-        })*/
-    }
     function addPaths(root) {
         function rec(node) {
             if(node.children && node.children.length > 0)
@@ -542,6 +533,16 @@
         root.pathnodes.push(root.COD);
         rec(root);
     }
+
+    function highlight(d) {
+        var node = d3.select(this);
+        if (node.classed('highlighted'))
+                node.classed('highlighted',false);
+        else
+                node.classed('highlighted',true);
+        update();
+    }
+
     function addTiers(root){
         root.level = 0;
         function rec(node) {
