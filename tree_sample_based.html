@@ -87,6 +87,9 @@
 
     var dictroot = [];
     var hlnodes = [];
+
+    var dblclktimer = false;
+
     //
     d3.csv("collaboration.csv",function (error,dat2) {
         if(error) throw error;
@@ -296,11 +299,18 @@
                 .style("stroke-width",function (d) {
                     return 0.1*Math.log(d.wght)/Math.log(1.3);
                 });
-
+        var hl = d3.selectAll(".highlighted");
         // Update the nodes…
+
+
         node = svg
                 .selectAll(".node")
-                .data(nodes, function(d) { return d.index; });
+                .data(nodes, function(d) { return d.index; })
+                .style("opacity",function (d) {
+                    if(hl.length === 0) return 1;
+                    else if (/*d3.select(this).classed("highlighted")*/d.highlighted)
+                        return 1;
+                    else return 1;});
 
         /*node.update()
                 .style("opacity",function (d) {
@@ -311,20 +321,28 @@
         });*/
         // Exit any old nodes.
         node.exit().remove();
-        var hl = d3.selectAll(".highlighted");
+
+
+        var cc = clickcancel();
+
         // Enter any new nodes.
         node.enter().append("g")
                 .attr("class", "node")
                 .style("cursor","pointer")
                 .call(force.drag)
+                //.call(cc)
+                //.on("click",clickcancel)
                 .on("dblclick",dblclick)
                 .on("click",highlight)
                 .style("opacity",function (d) {
                     if(hl.length === 0) return 1;
-                    else if (d3.select(this).classed("highlighted"))
+                    else if (d.highlighted)
                             return 1;
-                    else return 0.1;
+                    else return 1;
                 });
+        //cc.on("click",highlight);
+        //cc.on("dblclick",expand);
+
                 /*.on("mouseover", function (d) {
                     div
                             .transition()
@@ -359,7 +377,21 @@
             force.tick();
         }
     }
-
+    function click(d){
+        if ( dblclktimer )
+        {
+            clearTimeout(dblclktimer);
+            dblclktimer = false;
+            console.log("doubleclick");
+            expand(d);
+        }
+        // otherwise, what to do after single click (double click has timed out)
+        else dblclktimer = setTimeout( function(){
+            dblclktimer = false;
+            console.log("click");
+            highlight(d);
+        }, 150)
+    }
     function calcR(d) {
         if (d.wght > 1) return scale*(Math.log(d.wght)/Math.log(base)+4);
         else return 1;
@@ -397,7 +429,7 @@
 
     // Toggle children on click.
     function expand(d) {
-        if (!d3.event.defaultPrevented) {
+        //if (!d3.event.defaultPrevented) {
             if (d.children ) {
                 d._children = d.children;
                 d.children = null;
@@ -409,7 +441,44 @@
                 }
             }
             update();
-        }
+        //}
+    }
+    // black doubleclick magic
+    function clickcancel() {
+        var event = d3.dispatch('click', 'dblclick');
+        function cc(selection) {
+            var down,
+                    tolerance = 5,
+                    last,
+                    wait = null;
+            // euclidean distance
+            function dist(a, b) {
+                return Math.sqrt(Math.pow(a[0] - b[0], 2), Math.pow(a[1] - b[1], 2));
+            }
+            selection.on('mousedown', function() {
+                down = d3.mouse(document.body);
+                last = +new Date();
+            });
+            selection.on('mouseup', function() {
+                if (dist(down, d3.mouse(document.body)) > tolerance) {
+                    return;
+                } else {
+                    if (wait) {
+                        window.clearTimeout(wait);
+                        wait = null;
+                        event.dblclick(d3.event);
+                    } else {
+                        wait = window.setTimeout((function(e) {
+                            return function() {
+                                event.click(e);
+                                wait = null;
+                            };
+                        })(d3.event), 300);
+                    }
+                }
+            });
+        };
+        return d3.rebind(cc, event, 'on');
     }
 
     // Returns a list of all nodes under the root.
@@ -421,12 +490,8 @@
                 node.children.forEach(function (d) {
                     recurse(d);
                 });
-                var filtered = node.children.filter(function (el,ind,arr) {
-                    return el.wght >= minweight;
-                });
-                //node.children = filtered;
             }
-            if (node && !node.id) node.id = ++i;
+            if (!node.id) node.id = ++i;
             //if(node && node.wght >= minweight)
                 nodes.push(node);
         }
@@ -535,11 +600,15 @@
     }
 
     function highlight(d) {
-        var node = d3.select(this);
+        /*var node = d3.select(this);
         if (node.classed('highlighted'))
                 node.classed('highlighted',false);
         else
-                node.classed('highlighted',true);
+                node.classed('highlighted',true);*/
+        if(d.highlighted)
+                d.highlighted = false;
+        else
+                d.highlighted = true;
         update();
     }
 
