@@ -34,12 +34,29 @@
         pointer-events: none;
     }
 
+    .border{
+        strike-width: 2px;
+        stroke: #000;
+        fill: #000;
+    }
+
 </style>
 <body>
+<p>
+    <label for="linkfilter"
+           style="display: inline-block; width: 240px; text-align: right">
+        Link strength filter: ><span id="val">20</span>
+    </label>
+    <input type="range" min="0" max="200" value="20" step = "1" id="linkfilter">
+    <label for="search"
+    style="display: inline-block; width: 240px; text-align: right">Enter unit's name:
+    </label>
+    <input type = "text" size = 25 id = "search">
+</p>
 <script src="//d3js.org/d3.v3.min.js"></script>
 <script src=testdata.js></script>
 <script>
-
+    /*<span id="val">20</span>*/
     // bottom edge of the node weight
     var minweight = 1,minlnkweight = 20;
     // svg size and tree root variable
@@ -185,8 +202,10 @@
         });
         // tree accessor
         root[0].children = dict[0];
-        dictroot = root;
+        dictroot = root/*dict*/;
         root = root[0];
+
+
         //add tree levels
         addTiers(root);
         //add chilren nodes' weights to parent's
@@ -195,6 +214,8 @@
         removeEmptyNodes(root);
         //
         addPaths(root);
+        dictroot = {};
+        dictroot = createdictroot(root);
         //not ready yet
         var div = d3.select("body").append("div")
                 .attr("class", "tooltip")
@@ -204,6 +225,18 @@
 
         // fix main node's location
         root.fixed = true;
+
+        d3.select("#linkfilter").on("input",function () {
+            var value = this.value;
+            minlnkweight = value;
+            d3.select("#val").text(value);
+            update();
+        });
+        d3.select("#search")
+                //.on("change",find)
+                .on("keydown",function () {
+                    if(event.keyCode == 13) find();
+                });
     });
 
     // redrawing function
@@ -284,10 +317,18 @@
 
         // same for data links
         dlink = svg.selectAll(".datalink")
-                .data(morelinks/*,function (d) {
-                    return d.target.index;
-                    //return d;
-                }*/);
+                .data(morelinks)
+                .style("stroke-width",function (d) {
+                    var w = d.wght;
+                    if (w < 25) return 0.3;
+                    else if (w<50) return 0.5;
+                    else if (w<75) return 0.8;
+                    else if (w<100) return 1.2;
+                    else if (w<250) return 1.5;
+                    else if (w<500) return 1.9;
+                    else return 2.5;
+                    //return 0.1*Math.log(d.wght)/Math.log(1.3);
+                });
         dlink.exit().remove();
         dlink.enter().append("line")
                 .attr("class", "datalink")
@@ -345,13 +386,14 @@
                 })*/
                 .style("cursor","pointer")
                 .call(force.drag)
-                //.call(cc)
+                .call(cc);
                 //.on("click",clickcancel)
-                .on("click",click)
+                //.on("click",click)
                 //.on("dblclick",dblclick)
                 //.on("click",highlight);
-        //cc.on("click",highlight);
-        //cc.on("dblclick",expand);
+                //.on("dblclick",expand);
+        cc.on("click",highlight);
+        cc.on("dblclick",expand);
 
                 /*.on("mouseover", function (d) {
                     div
@@ -383,8 +425,6 @@
         node.attr("transform",function (d) { return "translate("+(d.x )+","+(d.y)+")";});
 
         node.style("opacity",function (d) {
-
-
             //if(hl.length === 0) return 1;
             /*else*/ if (d.highlighted || cntr == 0 || d.passivehighlighted) {
                 d.passivehighlighted = false;
@@ -402,13 +442,11 @@
         {
             clearTimeout(dblclktimer);
             dblclktimer = false;
-            console.log("doubleclick");
             expand(d);
         }
         // otherwise, what to do after single click (double click has timed out)
         else dblclktimer = setTimeout( function(){
             dblclktimer = false;
-            console.log("click");
             highlight(d);
         }, 150)
     }
@@ -469,7 +507,7 @@
         var event = d3.dispatch('click', 'dblclick');
         function cc(selection) {
             var down,
-                    tolerance = 5,
+                    tolerance = 3,
                     last,
                     wait = null;
             // euclidean distance
@@ -480,27 +518,29 @@
                 down = d3.mouse(document.body);
                 last = +new Date();
             });
-            selection.on('mouseup', function() {
+            selection.on('mouseup', function(node,i) {
                 if (dist(down, d3.mouse(document.body)) > tolerance) {
                     return;
                 } else {
                     if (wait) {
                         window.clearTimeout(wait);
                         wait = null;
-                        event.dblclick(d3.event/*selection*/);
+                        event.dblclick(node);
                     } else {
-                        wait = window.setTimeout((function(e) {
+                        var self = node;
+                        wait = window.setTimeout((function() {
                             return function() {
-                                event.click(e/*selection*/);
+                                event.click(self/*selection*/);
                                 wait = null;
                             };
-                        })(d3.event), 100);
+                        })(d3.event), 200);
                     }
                 }
             });
         };
         return d3.rebind(cc, event, 'on');
     }
+
 
     // Returns a list of all nodes under the root.
     function flatten(root) {
@@ -637,15 +677,19 @@
                     }
                 });
             }
-            /*else if (node._children && node._children.lengh > 0 && hl){
+            else if (node._children && node._children.length > 0){
                 node._children.forEach(function (e) {
                     rec(e);
-                    if(e.highlighted){
+                    if (hl) {if(e.highlighted){
                         e.highlighted = false;
-                        cntr --;
+                        cntr--;
+                    }}
+                    else if (!e.highlighted){
+                        e.highlighted = true;
+                        cntr++;
                     }
                 });
-            }*/
+            }
         }
         rec(d);
         if(hl){
@@ -692,5 +736,54 @@
         }
         rec(root);
         update();
+    }
+
+
+    function find() {
+        var text = d3.select("#search").property("value");
+        if(text.length > 1){
+            var reg = new RegExp(text,"i");
+            function rec(node) {
+                if(node.children && node.children.length > 0)
+                    node.children.forEach(function (d) {
+                        if(reg.test(d.ABBR)||reg.test(d.FULLNAME)){
+                            highlight(d);
+                        }
+                        else{
+                            rec(d);
+                        }
+                    });
+                else if(node._children && node._children.length > 0)
+                    node._children.forEach(function (d) {
+                        if(reg.test(d.ABBR)||reg.test(d.FULLNAME)){
+                            d.pathnodes.forEach(function (par) {
+                                if(dictroot[par]._children){
+                                    expand(dictroot[par]);
+                                }
+                            });
+                            highlight(d);
+                        }
+                        else{
+                            rec(d);
+                        }
+                    });
+            }
+            rec(root);
+            update();
+        }
+    }
+    function createdictroot(root) {
+        var dictroot = {};
+        function rec(node) {
+            dictroot[node.COD] = node;
+            if (node.children && node.children.length > 0){
+                node.children.forEach(rec);
+            }
+            else if (node._children && node._children.length >0){
+                node._children.forEach(rec);
+            }
+        }
+        rec(root);
+        return dictroot;
     }
 </script>
