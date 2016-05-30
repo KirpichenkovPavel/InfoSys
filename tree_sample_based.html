@@ -78,7 +78,8 @@
     // main field selector
     var svg = d3.select("body").append("svg")
             .attr("width", width)
-            .attr("height", height);
+            .attr("height", height)
+            .on("dblclick",undockAll);
 
     // selectors for nodes and edges
     var link,node,dlink;
@@ -346,8 +347,9 @@
                 .call(force.drag)
                 //.call(cc)
                 //.on("click",clickcancel)
-                .on("dblclick",dblclick)
-                .on("click",highlight);
+                .on("click",click)
+                //.on("dblclick",dblclick)
+                //.on("click",highlight);
         //cc.on("click",highlight);
         //cc.on("dblclick",expand);
 
@@ -367,7 +369,7 @@
                 .style("stroke",strokeColor)
                 //.style("opacity",0.5)
                 .attr("r", calcR)
-                .on("dblclick",expand);
+                //.on("dblclick",expand);
 
         node.append("text")
                 .text(function (d) { return d.ABBR; })
@@ -381,6 +383,8 @@
         node.attr("transform",function (d) { return "translate("+(d.x )+","+(d.y)+")";});
 
         node.style("opacity",function (d) {
+
+
             //if(hl.length === 0) return 1;
             /*else*/ if (d.highlighted || cntr == 0 || d.passivehighlighted) {
                 d.passivehighlighted = false;
@@ -483,14 +487,14 @@
                     if (wait) {
                         window.clearTimeout(wait);
                         wait = null;
-                        event.dblclick(d3.event);
+                        event.dblclick(d3.event/*selection*/);
                     } else {
                         wait = window.setTimeout((function(e) {
                             return function() {
-                                event.click(e);
+                                event.click(e/*selection*/);
                                 wait = null;
                             };
-                        })(d3.event), 300);
+                        })(d3.event), 100);
                     }
                 }
             });
@@ -671,5 +675,22 @@
             }
         }
         rec(root);
+    }
+
+    function undockAll() {
+        function rec(node) {
+            if(node.children && node.children.length > 0)
+                node.children.forEach(function (d) {
+                    d.fixed = false;
+                    rec(d);
+                });
+            else if(node._children && node._children.length > 0)
+                node._children.forEach(function (d) {
+                    d.fixed = false;
+                    rec(d);
+                });
+        }
+        rec(root);
+        update();
     }
 </script>
