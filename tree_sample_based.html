@@ -757,7 +757,7 @@
                     node._children.forEach(function (d) {
                         if(reg.test(d.ABBR)||reg.test(d.FULLNAME)){
                             d.pathnodes.forEach(function (par) {
-                                if(dictroot[par]._children){
+                                if(dictroot[par]._children && dictroot[par].COD !== d.COD){
                                     expand(dictroot[par]);
                                 }
                             });
