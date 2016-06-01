@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="BookmarkManager">
-    <bookmark url="file://$PROJECT_DIR$/tree_sample_based.html" description="event.click(e/*selection*/);" line="559" />
+    <bookmark url="file://$PROJECT_DIR$/tree_sample_based.html" description="event.click(e/*selection*/);" line="562" />
   </component>
   <component name="ChangeListManager">
     <list default="true" id="6c5ef5c6-f61a-46de-8136-780b0166d02d" name="Default" comment="">
@@ -30,7 +30,7 @@
       <file leaf-file-name="testdata.js" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/testdata.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1020">
+            <state relative-caret-position="0">
               <caret line="68" column="0" selection-start-line="68" selection-start-column="0" selection-end-line="68" selection-end-column="0" />
               <folding />
             </state>
@@ -40,8 +40,8 @@
       <file leaf-file-name="tree_sample_based.html" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/tree_sample_based.html">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="291">
-              <caret line="440" column="28" selection-start-line="440" selection-start-column="24" selection-end-line="440" selection-end-column="28" />
+            <state relative-caret-position="380">
+              <caret line="857" column="18" selection-start-line="857" selection-start-column="18" selection-end-line="857" selection-end-column="18" />
               <folding>
                 <element signature="n#style#0;n#label#0;n#p#0;n#body#0;n#!!top" expanded="true" />
                 <element signature="n#style#0;n#label#1;n#p#0;n#body#0;n#!!top" expanded="true" />
@@ -83,9 +83,9 @@
   </component>
   <component name="ProjectFrameBounds">
     <option name="x" value="65" />
-    <option name="y" value="24" />
+    <option name="y" value="-4" />
     <option name="width" value="1855" />
-    <option name="height" value="1056" />
+    <option name="height" value="1084" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="false">
     <OptionsSetting value="true" id="Add" />
@@ -112,7 +112,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scratches" />
       <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
@@ -134,6 +133,7 @@
           </PATH>
         </subPane>
       </pane>
+      <pane id="Scratches" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -245,12 +245,13 @@
       <workItem from="1464683113559" duration="6982000" />
       <workItem from="1464696161711" duration="13000" />
       <workItem from="1464696220474" duration="3462000" />
-      <workItem from="1464699700405" duration="7411000" />
+      <workItem from="1464699700405" duration="7464000" />
+      <workItem from="1464777732442" duration="21235000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="196621000" />
+    <option name="totallyTimeSpent" value="217909000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -262,7 +263,7 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="65" y="24" width="1855" height="1056" extended-state="6" />
+    <frame x="65" y="-4" width="1855" height="1084" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.1812227" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
@@ -296,17 +297,9 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="180" />
+      <option name="time" value="198" />
     </breakpoint-manager>
-    <watches-manager>
-      <configuration name="JavascriptDebugType">
-        <watch expression="dictroot[par]" language="HTML" />
-        <watch expression="node._children &amp;&amp; node._children.length &gt; 0" language="HTML" />
-        <watch expression="node._children.length &gt; 0" language="HTML" />
-        <watch expression="node" language="HTML" />
-        <watch expression="event.keyCode" language="HTML" />
-      </configuration>
-    </watches-manager>
+    <watches-manager />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/tree_sample_based.html">
@@ -714,11 +707,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="http://d3js.org/d3.v3.min.js">
-      <provider selected="true" editor-type-id="httpFileEditor">
-        <state />
-      </provider>
-    </entry>
     <entry file="file://$USER_HOME$/WebstormProjects/First/canvas.html">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -729,16 +717,21 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/testdata.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1020">
+        <state relative-caret-position="0">
           <caret line="68" column="0" selection-start-line="68" selection-start-column="0" selection-end-line="68" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
+    <entry file="http://d3js.org/d3.v3.min.js">
+      <provider selected="true" editor-type-id="httpFileEditor">
+        <state />
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/tree_sample_based.html">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="291">
-          <caret line="440" column="28" selection-start-line="440" selection-start-column="24" selection-end-line="440" selection-end-column="28" />
+        <state relative-caret-position="380">
+          <caret line="857" column="18" selection-start-line="857" selection-start-column="18" selection-end-line="857" selection-end-column="18" />
           <folding>
             <element signature="n#style#0;n#label#0;n#p#0;n#body#0;n#!!top" expanded="true" />
             <element signature="n#style#0;n#label#1;n#p#0;n#body#0;n#!!top" expanded="true" />
