@@ -10,10 +10,11 @@
 <title>SPbPU collaborations</title>
 <style>
     .node :circle{
-        cursor: pointer;
+        cursor: none;
         stroke: #3182bd;
         stroke-width: 1px;
     }
+
     .link {
         fill: none;
         stroke: #9ecae1;
@@ -37,6 +38,10 @@
     .fixed{
         stroke-width: 2.5px;
     }
+    svg{
+        cursor: pointer;
+    }
+
     .border{
         strike-width: 2px;
         stroke: #000;
@@ -94,6 +99,10 @@
     var base = 1.5;
     // node text size
     var textsize = 12;
+    //
+    var downpos = null;
+    var nodrag = false;
+
     // lock nodes position after dragging
     var drag = force.drag()
             .on("dragend",dragend);
@@ -102,7 +111,9 @@
             .attr("width", width)
             .attr("height", height)
             .on("dblclick",undockAll)
-            .on("mousemove",showLinkTooltip);
+            .on("mousedown",function () {downpos = d3.mouse(document.body);})
+            .on("mouseup",function () {downpos = null;offset_p = offset;})
+            .on("mousemove",/*showLinkTooltip*/svgmousemove);
     // selectors for nodes and edges
     var link,node,dlink;
     // parsed data and dictionary with informational links
@@ -113,6 +124,9 @@
     var dblclktimer = false;
     //
     var names;
+    //
+    var offset = [0,0];
+    var offset_p = [0,0];
     var ttip = d3.select("body")
             .append("div")
             .attr("class", "tooltip")
@@ -337,10 +351,10 @@
         // Enter any new links.
         link.enter().append("line")
                 .attr("class", "link")
-                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); });
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[0]; })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[1]; })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[0]; })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[1]; });
 
         // same for data links
         dlink = svg.selectAll(".datalink")
@@ -364,10 +378,10 @@
         dlink.exit().remove();
         dlink.enter().append("line")
                 .attr("class", "datalink")
-                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[0]; })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[1]; })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[0]; })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[1]; })
                 .style("stroke-width",function (d) {
                     var w = d.wght;
                     if (w < 25) return 0.3;
@@ -444,7 +458,7 @@
                             .style("opacity", 0);
                 });
         // place node to its place
-        node.attr("transform",function (d) { return "translate("+(d.x )+","+(d.y)+")";});
+        node.attr("transform",function (d) { return "translate("+(d.x+offset[0] )+","+(d.y+offset[1])+")";});
         node.style("opacity",function (d) {
             if (d.highlighted || cntr == 0 || d.passivehighlighted) {
                 return 1;
@@ -466,17 +480,17 @@
     function tick() {
 
         link
-                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); });
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[0]; })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[1]; })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[0]; })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[1]; });
         dlink
-                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); })
-                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target)); });
+                .attr("x1", function(d) { return recSx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[0]; })
+                .attr("y1", function(d) { return recSy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[1]; })
+                .attr("x2", function(d) { return recDx(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[0]; })
+                .attr("y2", function(d) { return recDy(d.source.x, d.target.x, d.source.y, d.target.y,calcR(d.source),calcR(d.target))+offset[1]; });
 
-        node.attr("transform",function (d) { return "translate("+(d.x)+","+(d.y)+")";});
+        node.attr("transform",function (d) { return "translate("+(d.x+offset[0])+","+(d.y+offset[1])+")";});
         if (force.alpha() < minAlpha)
                 force.stop();
     }
@@ -523,9 +537,11 @@
                     wait = null;
             selection.on('mousedown', function() {
                 down = d3.mouse(document.body);
+                nodrag = true;
                 last = +new Date();
             });
             selection.on('mouseup', function(node,i) {
+                nodrag = false;
                 if (dist(down, d3.mouse(document.body)) > tolerance) {
                     return;
                 } else {
@@ -875,5 +891,15 @@
             }
         });
         return names;
+    }
+    function svgmousemove() {
+        showLinkTooltip();
+        if(downpos && !nodrag){
+            var curr = d3.mouse(document.body);
+            offset = [offset_p[0]+curr[0]- downpos[0],offset_p[1]+curr[1] - downpos[1]];
+            update();
+        }
+
+
     }
 </script>
